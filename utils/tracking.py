@@ -19,28 +19,22 @@ class Tracker:
                                  nn_budget=self.cfg.DEEPSORT.NN_BUDGET,
                                  use_cuda=True)
 
-    def update(self, _det, _im0, _names):
+    def update(self, _object_list, _im0):
         bbox_xywh = []
         confs = []
-        clss = []
 
-        # Adapt detections to deep sort input format
-        for *xyxy, conf, cls in _det:
-            img_h, img_w, _ = _im0.shape
-            x_c, y_c, bbox_w, bbox_h = bbox_rel(img_w, img_h, *xyxy)
-            obj = [x_c, y_c, bbox_w, bbox_h]
-            bbox_xywh.append(obj)
-            confs.append([conf.item()])
-            clss.append(_names[int(cls)])
+        for object in _object_list:
+            bbox_xywh.append(object.location)
+            confs.append(object.confs)
 
         xywhs = torch.Tensor(bbox_xywh)
         confss = torch.Tensor(confs)
-
-        #####
-        # Pass detections to deepsort
+        #
+        # #####
+        # # Pass detections to deepsort
         outputs = self.deepsort.update(xywhs, confss, _im0)
-
-        # draw boxes for visualization
+        #
+        # # draw boxes for visualization
         if len(outputs) > 0:
             bbox_xyxy = outputs[:, :4]
             identities = outputs[:, -1]
