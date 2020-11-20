@@ -40,6 +40,7 @@ class Track:
     feature : Optional[ndarray]
         Feature vector of the detection this track originates from. If not None,
         this feature is added to the `features` cache.
+    _label:
 
     Attributes
     ----------
@@ -60,11 +61,12 @@ class Track:
     features : List[ndarray]
         A cache of features. On each measurement update, the associated feature
         vector is added to this list.
+    _label:
 
     """
 
     def __init__(self, mean, covariance, track_id, n_init, max_age,
-                 feature=None):
+                 feature=None, _label=None):
         self.mean = mean
         self.covariance = covariance
         self.track_id = track_id
@@ -79,6 +81,8 @@ class Track:
 
         self._n_init = n_init
         self._max_age = max_age
+
+        self.label = _label
 
     def to_tlwh(self):
         """Get current position in bounding box format `(top left x, top left y,

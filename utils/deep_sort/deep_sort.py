@@ -6,6 +6,8 @@ from .sort.nn_matching import NearestNeighborDistanceMetric
 from .sort.preprocessing import non_max_suppression
 from .sort.detection import Detection
 from .sort.tracker import Tracker
+from utils.object import Person
+from utils.object import Object
 
 
 __all__ = ['DeepSort']
@@ -22,8 +24,13 @@ class DeepSort(object):
         nn_budget = 100
         metric = NearestNeighborDistanceMetric("cosine", max_cosine_distance, nn_budget)
         self.tracker = Tracker(metric, max_iou_distance=max_iou_distance, max_age=max_age, n_init=n_init)
+        self.manager = None
 
-    def update(self, bbox_xywh, confidences, ori_img):
+    def set_manager(self, _manager):
+        self.manager = _manager
+        self.tracker.set_manager(_manager)
+
+    def update(self, bbox_xywh, confidences, ori_img, _labels):
         self.height, self.width = ori_img.shape[:2]
         # generate detections
         features = self._get_features(bbox_xywh, ori_img)
@@ -38,20 +45,33 @@ class DeepSort(object):
 
         # update tracker
         self.tracker.predict()
-        self.tracker.update(detections)
+        self.tracker.update(detections, _labels)
 
         # output bbox identities
-        outputs = []
         for track in self.tracker.tracks:
             if not track.is_confirmed() or track.time_since_update > 1:
                 continue
             box = track.to_tlwh()
             x1,y1,x2,y2 = self._tlwh_to_xyxy(box)
             track_id = track.track_id
-            outputs.append(np.array([x1,y1,x2,y2,track_id], dtype=np.int))
-        if len(outputs) > 0:
-            outputs = np.stack(outputs,axis=0)
-        return outputs
+            if track.label == 'person':
+                person = self.manager.get_person(track_id)
+                if person:
+                    person.location = [x1,y1,x2,y2]
+                else:
+                    person = Person()
+                    person.id = track_id
+                    person.location = [x1, y1, x2, y2]
+                    self.manager.add_person(person)
+            else:
+                obj = self.manager.get_object(track_id)
+                if obj:
+                    obj.location = [x1,y1,x2,y2]
+                else:
+                    obj = Object(track.label)
+                    obj.id = track_id
+                    obj.location = [x1,y1,x2,y2]
+                    self.manager.add_object(obj)
 
 
     """

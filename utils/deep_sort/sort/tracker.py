@@ -5,6 +5,7 @@ from . import kalman_filter
 from . import linear_assignment
 from . import iou_matching
 from .track import Track
+from utils.deep_sort.sort.track import TrackState
 
 
 class Tracker:
@@ -46,6 +47,10 @@ class Tracker:
         self.kf = kalman_filter.KalmanFilter()
         self.tracks = []
         self._next_id = 1
+        self.manager = None
+
+    def set_manager(self, _manager):
+        self.manager = _manager
 
     def predict(self):
         """Propagate track state distributions one time step forward.
@@ -55,7 +60,7 @@ class Tracker:
         for track in self.tracks:
             track.predict(self.kf)
 
-    def update(self, detections):
+    def update(self, detections, _labels):
         """Perform measurement update and track management.
 
         Parameters
@@ -63,6 +68,9 @@ class Tracker:
         detections : List[deep_sort.detection.Detection]
             A list of detections at the current time step.
 
+        _labels: List[labels of object]
+
+        _manager:
         """
         # Run matching cascade.
         matches, unmatched_tracks, unmatched_detections = \
@@ -72,10 +80,36 @@ class Tracker:
         for track_idx, detection_idx in matches:
             self.tracks[track_idx].update(
                 self.kf, detections[detection_idx])
+
+        ## for objects
         for track_idx in unmatched_tracks:
-            self.tracks[track_idx].mark_missed()
+            if self.tracks[track_idx].label != 'person':
+                self.tracks[track_idx].mark_missed()
+        ## for person
+        for track_idx in unmatched_tracks:
+            if self.tracks[track_idx].label == 'person':
+                person = self.manager.get_person(track_idx)
+                if person:
+                    if person.belongings:
+                        flag = True
+                        for obj in person.belongings:
+                            track = [t for t in self.tracks if t.track_id==obj.id]
+                            if track[0].state == TrackState.Deleted:
+                                flag = flag and True
+                            else:
+                                flag = flag and False
+                                obj.is_abandoned = True
+                        if flag:
+                            self.tracks[track_idx].mark_missed()
+                            person.is_deleted = True
+                    else:
+                        self.tracks[track_idx].mark_missed()
+                        person.is_deleted = True
+
         for detection_idx in unmatched_detections:
-            self._initiate_track(detections[detection_idx])
+            _label = _labels[detection_idx]
+            self._initiate_track(detections[detection_idx], _label)
+
         self.tracks = [t for t in self.tracks if not t.is_deleted()]
 
         # Update distance metric.
@@ -130,9 +164,9 @@ class Tracker:
         unmatched_tracks = list(set(unmatched_tracks_a + unmatched_tracks_b))
         return matches, unmatched_tracks, unmatched_detections
 
-    def _initiate_track(self, detection):
+    def _initiate_track(self, detection, _label):
         mean, covariance = self.kf.initiate(detection.to_xyah())
         self.tracks.append(Track(
             mean, covariance, self._next_id, self.n_init, self.max_age,
-            detection.feature))
+            detection.feature, _label))
         self._next_id += 1

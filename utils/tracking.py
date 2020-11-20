@@ -18,31 +18,39 @@ class Tracker:
                                  max_age=self.cfg.DEEPSORT.MAX_AGE, n_init=self.cfg.DEEPSORT.N_INIT,
                                  nn_budget=self.cfg.DEEPSORT.NN_BUDGET,
                                  use_cuda=True)
+        self.manager = None
 
-    def update(self, _object_list, _im0):
-        bbox_xywh = []
-        confs = []
+    def set_manager(self, _manager):
+        self.manager = _manager
+        self.deepsort.set_manager(_manager)
 
-        for object in _object_list:
-            bbox_xywh.append(object.location)
-            confs.append(object.confs)
 
-        xywhs = torch.Tensor(bbox_xywh)
-        confss = torch.Tensor(confs)
+    def update(self, _im0, _bbox_xywh, _confs, _labels):
+        xywhs = torch.Tensor(_bbox_xywh)
+        confss = torch.Tensor(_confs)
         #
         # #####
         # # Pass detections to deepsort
-        outputs = self.deepsort.update(xywhs, confss, _im0)
-        #
-        # # draw boxes for visualization
-        if len(outputs) > 0:
-            bbox_xyxy = outputs[:, :4]
-            identities = outputs[:, -1]
-            draw_boxes(_im0, bbox_xyxy, identities)
+        self.deepsort.update(xywhs, confss, _im0, _labels)
+
+        self.manager.update()
+        bbox_xyxy = []
+        identities = []
+        if self.manager.person_list or self.manager.object_list:
+            for person in self.manager.person_list:
+                bbox_xyxy.append(person.location)
+                identities.append(person.id)
+            for obj in self.manager.object_list:
+                bbox_xyxy.append(obj.location)
+                identities.append(obj.id)
+
+        if bbox_xyxy and identities:
+            draw_boxes(_im0, bbox_xyxy, identities, _manager=self.manager)
+
 
 
 palette = (2 ** 11 - 1, 2 ** 15 - 1, 2 ** 20 - 1)
-def draw_boxes(img, bbox, identities=None, offset=(0, 0)):
+def draw_boxes(img, bbox, identities=None, offset=(0, 0), _manager=None):
     for i, box in enumerate(bbox):
         x1, y1, x2, y2 = [int(i) for i in box]
         x1 += offset[0]
@@ -51,9 +59,14 @@ def draw_boxes(img, bbox, identities=None, offset=(0, 0)):
         y2 += offset[1]
         # box text and bar
         id = int(identities[i]) if identities is not None else 0
-        color = [int((p * (id ** 2 - id + 1)) % 255) for p in palette]
-        color = tuple(color)
-        label = '{}{:d}'.format("", id)
+        color = tuple([0, 255, 0])
+        name='person'
+        if _manager.get_object(id):
+            obj = _manager.get_object(id)
+            name=obj.label
+            if obj.is_abandoned:
+                color = tuple([0, 0, 255])
+        label = '{}{:d}{}'.format("", id, name)
         t_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_PLAIN, 2, 2)[0]
         cv2.rectangle(img, (x1, y1), (x2, y2), color, 3)
         cv2.rectangle(img, (x1, y1), (x1 + t_size[0] + 3, y1 + t_size[1] + 4), color, -1)

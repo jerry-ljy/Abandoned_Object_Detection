@@ -1,10 +1,12 @@
 import torch
+import numpy as np
 from pathlib import Path
 
 from utils.yolov5.utils.general import set_logging,check_img_size,non_max_suppression,scale_coords
 from utils.yolov5.utils.torch_utils import select_device
 from utils.yolov5.models.experimental import attempt_load
 from utils.object import Object
+from utils.object import Person
 
 
 class Detector:
@@ -27,10 +29,15 @@ class Detector:
         self.imgsz = check_img_size(self.imgsz, s=self.model.stride.max())  # check img_size
         if self.half:
             self.model.half()  # to FP16
-        self.object_list = list()
 
+        self.manager=None
+        self.tracker=None
 
-    def detect(self, _webcam, _path, _img, _im0s,_names, _tracker):
+    def set_tracker(self, _tracker):
+        self.tracker=_tracker
+
+    def detect(self, _webcam, _path, _img, _im0s,_names):
+        output=None
         _img = torch.from_numpy(_img).to(self.device)
         _img = _img.half() if self.half else _img.float()  # uint8 to fp16/32
         _img /= 255.0  # 0 - 255 to 0.0 - 1.0
@@ -52,16 +59,27 @@ class Detector:
             if len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(_img.shape[2:], det[:, :4], im0.shape).round()
-                self.object_list = list()
+                bbox_xywh =[]
+                confs=[]
+                labels=[]
                 for *xyxy, conf, cls in det:
                     img_h, img_w, _ = im0.shape
                     x_c, y_c, bbox_w, bbox_h = bbox_rel(img_w, img_h, *xyxy)
                     obj = [x_c, y_c, bbox_w, bbox_h]
-                    _object = Object(obj, conf.item(), _names[int(cls)])
-                    self.object_list.append(_object)
-                _tracker.update(self.object_list, im0)
-        return im0
+                    bbox_xywh.append(obj)
+                    confs.append(conf)
+                    labels.append(_names[int(cls)])
 
+                self.tracker.update(im0, bbox_xywh, confs, labels)
+            output = im0
+        return output
+
+
+def calculate_distance(_object, _person):
+    obj_cen = np.array([_object.location[0].cpu() + _object.location[2].cpu()/2, _object.location[1].cpu() + _object.location[3].cpu()/2])
+    per_cen = np.array([_person.location[0].cpu() + _person.location[2].cpu()/2, _person.location[1].cpu() + _person.location[3].cpu()/2])
+    distance = np.sqrt(np.sum(np.square(obj_cen - per_cen)))
+    return distance
 
 
 def bbox_rel(image_width, image_height, *xyxy):
