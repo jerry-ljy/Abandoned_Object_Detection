@@ -1,16 +1,15 @@
 import torch
 import cv2
-from pathlib import Path
+import os
+from model.deep_sort.utils.parser import get_config
+from model.deep_sort.deep_sort import DeepSort
 
-from utils.deep_sort.utils.parser import get_config
-from utils.deep_sort.deep_sort import DeepSort
-from utils.yolov5.utils.general import scale_coords
 
 class Tracker:
     def __init__(self):
         # initialize deepsort
         self.cfg = get_config()
-        self.cfg.merge_from_file("./utils/deep_sort/configs/deep_sort.yaml")
+        self.cfg.merge_from_file("./model/deep_sort/configs/deep_sort.yaml")
         self.deepsort = DeepSort(self.cfg.DEEPSORT.REID_CKPT,
                                  max_dist=self.cfg.DEEPSORT.MAX_DIST, min_confidence=self.cfg.DEEPSORT.MIN_CONFIDENCE,
                                  nms_max_overlap=self.cfg.DEEPSORT.NMS_MAX_OVERLAP,

@@ -2,12 +2,9 @@ import torch
 import numpy as np
 from pathlib import Path
 
-from utils.yolov5.utils.general import set_logging,check_img_size,non_max_suppression,scale_coords
-from utils.yolov5.utils.torch_utils import select_device
-from utils.yolov5.models.experimental import attempt_load
-from utils.object import Object
-from utils.object import Person
-
+from model.yolov5.utils.general import set_logging,check_img_size,non_max_suppression,scale_coords
+from model.yolov5.utils.torch_utils import select_device
+from model.yolov5.models.experimental import attempt_load
 
 class Detector:
     def __init__(self):

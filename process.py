@@ -2,14 +2,15 @@ import argparse
 import cv2
 import torch
 import torch.backends.cudnn as cudnn
-from utils.yolov5.utils.datasets import LoadImages,LoadStreams
+from model.yolov5.utils.datasets import LoadImages,LoadStreams
+
 from utils.detection import Detector
 from utils.tracking import Tracker
 from utils.manager import Manager
 from numpy import random
 
 import sys
-sys.path.insert(0, './utils/yolov5')
+sys.path.insert(0, './model/yolov5')
 
 def process(opt, output_path):
     source = opt.source
