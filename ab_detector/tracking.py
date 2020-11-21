@@ -1,7 +1,6 @@
 import torch
 import cv2
-import os
-from model.deep_sort.utils.parser import get_config
+from utils.parser import get_config
 from model.deep_sort.deep_sort import DeepSort
 
 
@@ -37,11 +36,13 @@ class Tracker:
         identities = []
         if self.manager.person_list or self.manager.object_list:
             for person in self.manager.person_list:
-                bbox_xyxy.append(person.location)
-                identities.append(person.id)
+                if not person.is_missed:
+                    bbox_xyxy.append(person.location)
+                    identities.append(person.id)
             for obj in self.manager.object_list:
-                bbox_xyxy.append(obj.location)
-                identities.append(obj.id)
+                if not obj.is_missed:
+                    bbox_xyxy.append(obj.location)
+                    identities.append(obj.id)
 
         if bbox_xyxy and identities:
             draw_boxes(_im0, bbox_xyxy, identities, _manager=self.manager)

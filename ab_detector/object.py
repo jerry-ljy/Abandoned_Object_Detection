@@ -4,6 +4,7 @@ class Person:
         self.belongings=list()
         self.id=-1
         self.is_deleted = False
+        self.is_missed = False
 
     def add_object(self, _object):
         self.belongings.append(_object)
@@ -14,3 +15,4 @@ class Object:
         self.label=_label
         self.id=-1
         self.is_abandoned = False
+        self.is_missed = False

@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 
 from .common import Conv, DWConv
-from model.yolov5.utils.google_utils import attempt_download
+from utils.google_utils import attempt_download
 
 class CrossConv(nn.Module):
     # Cross Convolution Downsample

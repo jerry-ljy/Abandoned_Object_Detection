@@ -2,11 +2,11 @@ import argparse
 import cv2
 import torch
 import torch.backends.cudnn as cudnn
-from model.yolov5.utils.datasets import LoadImages,LoadStreams
+from utils.datasets import LoadImages,LoadStreams
 
-from utils.detection import Detector
-from utils.tracking import Tracker
-from utils.manager import Manager
+from ab_detector.detection import Detector
+from ab_detector.tracking import Tracker
+from ab_detector.manager import Manager
 from numpy import random
 
 import sys
@@ -69,7 +69,7 @@ def process(opt, output_path):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--source', type=str, default='./jieyu.mp4', help='source')  # file/folder, 0 for webcam
+    parser.add_argument('--source', type=str, default='0', help='source')  # file/folder, 0 for webcam
     args = parser.parse_args()
 
     process(args, './jieyu_detected.mp4')

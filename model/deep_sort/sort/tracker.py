@@ -80,31 +80,49 @@ class Tracker:
         for track_idx, detection_idx in matches:
             self.tracks[track_idx].update(
                 self.kf, detections[detection_idx])
+            index = self.tracks[track_idx].track_id
+            if self.tracks[track_idx].label=='person':
+                person = self.manager.get_person(index)
+                if person:
+                    person.is_missed = False
+                    for obj in person.belongings:
+                        obj.is_abandoned=False
+            else:
+                obj = self.manager.get_object(index)
+                if obj:
+                    obj.is_missed = False
 
         ## for objects
         for track_idx in unmatched_tracks:
             if self.tracks[track_idx].label != 'person':
                 self.tracks[track_idx].mark_missed()
+                index = self.tracks[track_idx].track_id
+                obj = self.manager.get_object(index)
+                if obj:
+                    obj.is_missed=True
         ## for person
         for track_idx in unmatched_tracks:
             if self.tracks[track_idx].label == 'person':
-                person = self.manager.get_person(track_idx)
+                index = self.tracks[track_idx].track_id
+                person = self.manager.get_person(index)
                 if person:
+                    person.is_missed=True
                     if person.belongings:
                         flag = True
                         for obj in person.belongings:
-                            track = [t for t in self.tracks if t.track_id==obj.id]
-                            if track[0].state == TrackState.Deleted:
+                            if obj.is_missed:
                                 flag = flag and True
                             else:
                                 flag = flag and False
                                 obj.is_abandoned = True
                         if flag:
                             self.tracks[track_idx].mark_missed()
-                            person.is_deleted = True
+                            if self.tracks[track_idx].state == TrackState.Deleted:
+                                person.is_deleted = True
                     else:
                         self.tracks[track_idx].mark_missed()
-                        person.is_deleted = True
+                        if self.tracks[track_idx].state == TrackState.Deleted:
+                            person.is_deleted = True
 
         for detection_idx in unmatched_detections:
             _label = _labels[detection_idx]

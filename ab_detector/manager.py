@@ -43,16 +43,20 @@ class Manager:
                     distance = float("inf")
                     target = None
                     for person in self.person_list:
-                        temp = calculate_distance(_obj, person)
-                        if temp < distance:
-                            distance = temp
-                            target = person
+                        if not person.is_missed:
+                            temp = calculate_distance(_obj, person)
+                            if temp < distance:
+                                distance = temp
+                                target = person
                     if target:
                         target.add_object(_obj)
                     else:
                         _obj.is_abandoned = True
+                else:
+                    _obj.is_abandoned = True
                 self.object_list.append(_obj)
         self.new_object_list=list()
+
 
 
     def get_ab_objects(self):

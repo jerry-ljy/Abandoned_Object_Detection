@@ -2,8 +2,8 @@ import torch
 import numpy as np
 from pathlib import Path
 
-from model.yolov5.utils.general import set_logging,check_img_size,non_max_suppression,scale_coords
-from model.yolov5.utils.torch_utils import select_device
+from utils.general import set_logging,check_img_size,non_max_suppression,scale_coords
+from utils.torch_utils import select_device
 from model.yolov5.models.experimental import attempt_load
 
 class Detector:
@@ -47,6 +47,11 @@ class Detector:
         # Apply NMS
         pred = non_max_suppression(pred, self.conf_thres, self.iou_thres, classes=self.classes,
                                    agnostic=self.agnostic_nms)
+
+        bbox_xywh = []
+        confs = []
+        labels = []
+
         for i, det in enumerate(pred):  # detections per image
             if _webcam:  # batch_size >= 1
                 p, s, im0 = Path(_path[i]), '%g: ' % i, _im0s[i].copy()
@@ -56,9 +61,7 @@ class Detector:
             if len(det):
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(_img.shape[2:], det[:, :4], im0.shape).round()
-                bbox_xywh =[]
-                confs=[]
-                labels=[]
+
                 for *xyxy, conf, cls in det:
                     img_h, img_w, _ = im0.shape
                     x_c, y_c, bbox_w, bbox_h = bbox_rel(img_w, img_h, *xyxy)
@@ -67,7 +70,7 @@ class Detector:
                     confs.append(conf)
                     labels.append(_names[int(cls)])
 
-                self.tracker.update(im0, bbox_xywh, confs, labels)
+            self.tracker.update(im0, bbox_xywh, confs, labels)
             output = im0
         return output
 
